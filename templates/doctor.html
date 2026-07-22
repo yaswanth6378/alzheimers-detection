@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Doctor Dashboard{% endblock %}
+{% block page_title %}<i class="fas fa-user-md me-2"></i>Doctor Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#2980b9,#3498db)">
+      <div class="num">{{ total }}</div>
+      <div class="lbl">Total Scans</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71)">
+      <div class="num">{{ stage_counts['No Impairment'] }}</div>
+      <div class="lbl">No Impairment</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#e67e22,#f39c12)">
+      <div class="num">{{ stage_counts['Mild Impairment'] + stage_counts['Very Mild Impairment'] }}</div>
+      <div class="lbl">Mild / Very Mild</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="background:linear-gradient(135deg,#e74c3c,#c0392b)">
+      <div class="num">{{ stage_counts['Moderate Impairment'] }}</div>
+      <div class="lbl">Moderate</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Patient List -->
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-users me-2"></i>Patients ({{ patients|length }})
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Email</th><th>Records</th><th></th></tr></thead>
+          <tbody>
+            {% for p in patients %}
+            <tr>
+              <td><i class="fas fa-user me-1 text-primary"></i>{{ p.name }}</td>
+              <td style="font-size:.85rem">{{ p.email }}</td>
+              <td>{{ p.records|length }}</td>
+              <td>
+                <a href="{{ url_for('patient_records', patient_id=p.id) }}"
+                   class="btn btn-sm btn-outline-primary rounded-pill">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Scans -->
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-clock me-2"></i>Recent Scans (All Patients)
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Patient</th><th>Date</th><th>Result</th><th>Conf.</th><th></th></tr></thead>
+          <tbody>
+            {% for r in recent %}
+            {% set info = stage_info.get(r.prediction, ('?','#888','❓')) %}
+            <tr>
+              <td>{{ r.user.name }}</td>
+              <td style="font-size:.85rem">{{ r.created_at.strftime('%d %b') }}</td>
+              <td><span style="color:{{ info[1] }};font-weight:600">
+                {{ info[2] }} {{ r.prediction }}</span></td>
+              <td>{{ '%.0f'|format(r.confidence) }}%</td>
+              <td>
+                <a href="{{ url_for('result', record_id=r.id) }}"
+                   class="btn btn-sm btn-outline-primary rounded-pill">View</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

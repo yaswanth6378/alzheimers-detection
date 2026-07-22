@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Admin Panel{% endblock %}
+{% block page_title %}<i class="fas fa-cog me-2"></i>Admin Panel{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <i class="fas fa-users me-2"></i>All Users ({{ users|length }}) —
+    Total Records: {{ total_records }}
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Email</th>
+            <th>Role</th><th>Joined</th><th>Records</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><i class="fas fa-user me-1 text-primary"></i>{{ u.name }}</td>
+          <td style="font-size:.85rem">{{ u.email }}</td>
+          <td>
+            {% if u.role == 'admin' %}
+              <span class="badge bg-danger">Admin</span>
+            {% elif u.role == 'doctor' %}
+              <span class="badge bg-primary">Doctor</span>
+            {% else %}
+              <span class="badge bg-success">Patient</span>
+            {% endif %}
+          </td>
+          <td style="font-size:.85rem">{{ u.created_at.strftime('%d %b %Y') }}</td>
+          <td>{{ u.records|length }}</td>
+          <td>
+            {% if u.role != 'admin' %}
+            <div class="dropdown d-inline">
+              <button class="btn btn-sm btn-outline-secondary dropdown-toggle rounded-pill"
+                      data-bs-toggle="dropdown">Role</button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item"
+                       href="{{ url_for('change_role', user_id=u.id, role='patient') }}">
+                    Patient</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('change_role', user_id=u.id, role='doctor') }}">
+                    Doctor</a></li>
+                <li><a class="dropdown-item"
+                       href="{{ url_for('change_role', user_id=u.id, role='admin') }}">
+                    Admin</a></li>
+              </ul>
+            </div>
+            <a href="{{ url_for('delete_user', user_id=u.id) }}"
+               class="btn btn-sm btn-outline-danger rounded-pill ms-1"
+               onclick="return confirm('Delete user {{ u.name }}?')">
+              <i class="fas fa-trash"></i>
+            </a>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

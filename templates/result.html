@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Result{% endblock %}
+{% block page_title %}<i class="fas fa-poll me-2"></i>Analysis Result{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- MRI Image -->
+  <div class="col-md-4">
+    <div class="card text-center p-3">
+      <img src="{{ url_for('static', filename='uploads/' + record.image_path) }}"
+           alt="MRI" style="border-radius:12px;width:100%;
+                             box-shadow:0 4px 15px rgba(0,0,0,.15)"/>
+      <p style="color:#888;font-size:.85rem;margin-top:10px">
+        Analysed on {{ record.created_at.strftime('%d %B %Y at %I:%M %p') }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="col-md-8">
+    <div class="card mb-3">
+      <div class="card-header"><i class="fas fa-diagnoses me-2"></i>Diagnosis</div>
+      <div class="card-body text-center py-4">
+        <div class="result-badge mb-3"
+             style="background:{{ info[1] }}20;color:{{ info[1] }};
+                    border:2px solid {{ info[1] }}">
+          {{ info[2] }} {{ record.prediction }}
+        </div>
+        <div class="mt-2">
+          <span style="font-size:1.1rem;color:#555">Confidence: </span>
+          <span style="font-size:1.3rem;font-weight:700;color:{{ info[1] }}">
+            {{ '%.1f'|format(record.confidence) }}%
+          </span>
+        </div>
+        <div class="progress mt-3" style="height:12px;border-radius:8px">
+          <div class="progress-bar" role="progressbar"
+               style="width:{{ record.confidence }}%;
+                      background:{{ info[1] }};border-radius:8px">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Probabilities -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="fas fa-chart-bar me-2"></i>Stage Probabilities
+      </div>
+      <div class="card-body">
+        {% set colors = {'No Impairment':'#27ae60',
+                         'Very Mild Impairment':'#f1c40f',
+                         'Mild Impairment':'#e67e22',
+                         'Moderate Impairment':'#e74c3c'} %}
+        {% for stage, prob in probs.items() %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span style="font-weight:600">{{ stage }}</span>
+            <span style="color:{{ colors[stage] }};font-weight:700">
+              {{ '%.1f'|format(prob) }}%
+            </span>
+          </div>
+          <div class="progress" style="height:20px;border-radius:8px">
+            <div class="progress-bar prob-bar" role="progressbar"
+                 style="width:{{ prob }}%;background:{{ colors[stage] }}">
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('download_report', record_id=record.id) }}"
+         class="btn btn-danger rounded-pill">
+        <i class="fas fa-file-pdf me-2"></i>Download PDF Report
+      </a>
+      <a href="{{ url_for('predict_page') }}"
+         class="btn btn-primary rounded-pill">
+        <i class="fas fa-plus me-2"></i>New Analysis
+      </a>
+      <a href="{{ url_for('history') }}"
+         class="btn btn-outline-secondary rounded-pill">
+        <i class="fas fa-history me-2"></i>All Records
+      </a>
+    </div>
+
+    {% if record.notes %}
+    <div class="card mt-3">
+      <div class="card-header"><i class="fas fa-sticky-note me-2"></i>Notes</div>
+      <div class="card-body">{{ record.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

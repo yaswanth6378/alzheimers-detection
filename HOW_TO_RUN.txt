@@ -1,0 +1,44 @@
+============================================================
+  Alzheimer's Detection Web App — Setup Guide
+============================================================
+
+STEP 1 — Copy these files to your alzheimers folder:
+   C:\Users\yaswa\Downloads\alzheimers\
+
+   Copy everything inside alzheimer_webapp folder:
+   - app.py
+   - requirements.txt
+   - templates\ (folder with all HTML files)
+
+STEP 2 — Copy your trained models to same folder:
+   resnet50_alzheimer.keras   ← already in your folder ✅
+   custom_cnn_alzheimer.keras ← already in your folder ✅
+
+STEP 3 — Activate venv and install new libraries:
+   venv\Scripts\activate
+   pip install flask flask-sqlalchemy fpdf2
+
+STEP 4 — Run the web app:
+   python app.py
+
+STEP 5 — Open browser and go to:
+   http://127.0.0.1:5000
+
+============================================================
+  DEFAULT LOGIN (Admin):
+  Email   : admin@alzheimer.com
+  Password: admin123
+============================================================
+
+  FEATURES:
+  🔐 Login / Register (Patient & Doctor)
+  🏠 Dashboard with statistics
+  🧠 Upload MRI → Instant prediction
+  📊 Confidence bar charts
+  📋 Patient history / records
+  📄 PDF report download
+  👨‍⚕️ Doctor dashboard (view all patients)
+  ⚙️  Admin panel (manage users)
+  🎨 3 color themes (Blue / Dark / Green)
+
+============================================================

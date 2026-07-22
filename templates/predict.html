@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Analyse MRI{% endblock %}
+{% block page_title %}<i class="fas fa-microscope me-2"></i>Analyse MRI Scan{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="fas fa-upload me-2"></i>Upload Brain MRI Image
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+
+          <div class="upload-area" id="dropZone"
+               onclick="document.getElementById('fileInput').click()">
+            <i class="fas fa-cloud-upload-alt mb-3"></i>
+            <h5>Click to upload or drag & drop</h5>
+            <p style="color:#888;font-size:.9rem">
+              Supports JPG, PNG, BMP, TIFF, WEBP
+            </p>
+            <div id="previewDiv" style="display:none;margin-top:15px">
+              <img id="previewImg" src="" alt="Preview"
+                   style="max-height:200px;border-radius:10px;
+                          box-shadow:0 4px 15px rgba(0,0,0,.15)"/>
+              <p id="fileName" style="color:#2980b9;margin-top:8px;
+                                      font-weight:600"></p>
+            </div>
+          </div>
+          <input type="file" id="fileInput" name="file"
+                 accept="image/*" style="display:none"
+                 onchange="previewFile(this)"/>
+
+          <div class="mb-3 mt-3">
+            <label class="form-label fw-semibold">
+              Notes (optional)
+            </label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Add any additional notes here..."
+                      style="border-radius:10px"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100 py-3 rounded-pill"
+                  id="submitBtn" disabled>
+            <i class="fas fa-search me-2"></i>Analyse Image
+          </button>
+        </form>
+
+        <div id="loadingDiv" style="display:none;text-align:center;
+                                    padding:20px">
+          <div class="spinner-border text-primary"></div>
+          <p class="mt-2">Analysing MRI scan... Please wait</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="fw-bold"><i class="fas fa-info-circle me-2 text-primary"></i>
+            Tips for best results</h6>
+        <ul style="color:#666;font-size:.9rem;margin-bottom:0">
+          <li>Use clear, high-resolution MRI brain scans</li>
+          <li>Axial (horizontal) view gives best accuracy</li>
+          <li>Ensure image is not blurry or rotated</li>
+          <li>JPEG or PNG format recommended</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewFile(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('previewImg').src = e.target.result;
+      document.getElementById('fileName').textContent = input.files[0].name;
+      document.getElementById('previewDiv').style.display = 'block';
+      document.getElementById('submitBtn').disabled = false;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+document.getElementById('uploadForm').onsubmit = () => {
+  document.getElementById('loadingDiv').style.display = 'block';
+  document.getElementById('submitBtn').style.display  = 'none';
+};
+// Drag & Drop
+const zone = document.getElementById('dropZone');
+zone.ondragover  = e => { e.preventDefault(); zone.style.background='#e8f4ff'; };
+zone.ondragleave = () => { zone.style.background=''; };
+zone.ondrop = e => {
+  e.preventDefault();
+  zone.style.background = '';
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('fileInput').files = dt.files;
+    previewFile(document.getElementById('fileInput'));
+  }
+};
+</script>
+{% endblock %}

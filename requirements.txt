@@ -1,0 +1,7 @@
+flask
+flask-sqlalchemy
+werkzeug
+fpdf2
+numpy
+opencv-python
+tensorflow

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block auth_content %}
+<style>
+  body { background:linear-gradient(135deg,#1a3a5c 0%,#2980b9 100%);
+         min-height:100vh;display:flex;align-items:center;justify-content:center; }
+  .card { border-radius:20px;padding:40px;width:450px;
+          box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .form-control,.form-select { border-radius:10px;padding:12px 15px;
+                                border:2px solid #e0e0e0; }
+  .form-control:focus,.form-select:focus { border-color:#2980b9;box-shadow:none; }
+  .btn-reg { background:#27ae60;color:#fff;border:none;border-radius:10px;
+             padding:13px;font-size:1rem;font-weight:600;width:100%;transition:.2s; }
+  .btn-reg:hover { background:#1e8449; }
+</style>
+<div class="card">
+  <div style="text-align:center;margin-bottom:25px">
+    <i class="fas fa-brain" style="font-size:2.5rem;color:#2980b9"></i>
+    <h3 style="color:#2c3e50;margin-top:10px;font-weight:700">Create Account</h3>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }} py-2">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Full Name</label>
+      <input type="text" name="name" class="form-control"
+             placeholder="Enter your full name" required/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Email Address</label>
+      <input type="email" name="email" class="form-control"
+             placeholder="Enter your email" required/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Password</label>
+      <input type="password" name="password" class="form-control"
+             placeholder="Create a password" required/>
+    </div>
+    <div class="mb-4">
+      <label class="form-label fw-semibold">Register as</label>
+      <select name="role" class="form-select">
+        <option value="patient">Patient</option>
+        <option value="doctor">Doctor</option>
+      </select>
+    </div>
+    <button type="submit" class="btn-reg">
+      <i class="fas fa-user-plus me-2"></i>Create Account
+    </button>
+  </form>
+
+  <div style="text-align:center;margin-top:20px;color:#888">
+    Already have an account?
+    <a href="{{ url_for('login') }}" style="color:#2980b9;font-weight:600">
+      Login here
+    </a>
+  </div>
+</div>
+{% endblock %}

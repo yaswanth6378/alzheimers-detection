@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block auth_content %}
+<style>
+  body { background: linear-gradient(135deg, #1a3a5c 0%, #2980b9 100%);
+         min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .login-card { background:#fff; border-radius:20px; padding:40px;
+                width:420px; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .login-card .brand { text-align:center; margin-bottom:30px; }
+  .login-card .brand i { font-size:3rem; color:#2980b9; }
+  .login-card .brand h2 { color:#2c3e50; font-weight:700; margin-top:10px; }
+  .form-control { border-radius:10px; padding:12px 15px; border:2px solid #e0e0e0; }
+  .form-control:focus { border-color:#2980b9; box-shadow:none; }
+  .btn-login { background:#2980b9; color:#fff; border:none;
+               border-radius:10px; padding:13px; font-size:1rem;
+               font-weight:600; width:100%; transition:.2s; }
+  .btn-login:hover { background:#1a5276; }
+  .input-group-text { border-radius:10px 0 0 10px; background:#f0f4f8;
+                      border:2px solid #e0e0e0; border-right:none; }
+</style>
+
+<div class="login-card">
+  <div class="brand">
+    <i class="fas fa-brain"></i>
+    <h2>Alzheimer's Detection</h2>
+    <p style="color:#888;font-size:.9rem">AI-Powered MRI Analysis System</p>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }} py-2">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST">
+    <div class="mb-3">
+      <label class="form-label fw-600">Email Address</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-envelope text-secondary"></i></span>
+        <input type="email" name="email" class="form-control"
+               placeholder="Enter your email" required/>
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="form-label fw-600">Password</label>
+      <div class="input-group">
+        <span class="input-group-text"><i class="fas fa-lock text-secondary"></i></span>
+        <input type="password" name="password" class="form-control"
+               placeholder="Enter your password" required/>
+      </div>
+    </div>
+    <button type="submit" class="btn-login">
+      <i class="fas fa-sign-in-alt me-2"></i>Login
+    </button>
+  </form>
+
+  <div style="text-align:center;margin-top:20px;color:#888">
+    Don't have an account?
+    <a href="{{ url_for('register') }}" style="color:#2980b9;font-weight:600">
+      Register here
+    </a>
+  </div>
+
+  <div style="text-align:center;margin-top:15px;padding:10px;
+              background:#f8faff;border-radius:10px;font-size:.82rem;color:#888">
+    <strong>Demo Accounts:</strong><br>
+    Admin: admin@alzheimer.com / admin123
+  </div>
+</div>
+{% endblock %}
