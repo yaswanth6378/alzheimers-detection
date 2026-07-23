@@ -221,7 +221,15 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    user = User.query.get(session['user_id'])
+    # Safely get user_id from session
+    user_id = session.get('user_id')
+    user = User.query.get(user_id) if user_id else None
+
+    # If user session is invalid or user was deleted from database, clear session and redirect
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
+
     records = Record.query.filter_by(
         user_id=user.id).order_by(
         Record.created_at.desc()).limit(5).all()
@@ -247,7 +255,6 @@ def dashboard():
                            records=records,
                            stats=stats,
                            stage_info=STAGE_INFO)
-
 # ─────────────────────────────────────────────────────────────
 # ROUTES — PREDICT
 # ─────────────────────────────────────────────────────────────
