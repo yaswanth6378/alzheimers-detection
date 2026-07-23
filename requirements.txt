@@ -5,3 +5,4 @@ fpdf2
 numpy
 opencv-python-headless
 tensorflow
+gdown
