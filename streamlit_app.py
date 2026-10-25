@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import html
 import sqlite3
 import tempfile
 from contextlib import contextmanager
@@ -47,31 +48,60 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.markdown(
-    """
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-      :root { --ink:#18253b; --muted:#66748a; --blue:#2365d1; --pale:#f2f6fd; --teal:#10a7a0; }
-      .stApp { background:linear-gradient(180deg,#f6f9ff 0%,#ffffff 35%); color:var(--ink); }
-      html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
-      h1,h2,h3 { font-family:'Manrope',sans-serif; color:var(--ink); }
-      .hero { padding:1.25rem 1.5rem; background:linear-gradient(115deg,#10294f,#2365d1); color:white; border-radius:20px; margin-bottom:1.2rem; box-shadow:0 12px 30px rgba(35,101,209,.16); }
-      .hero h1 { color:white; margin:0 0 .4rem 0; font-size:2rem; }
-      .hero p { color:#e2ebff; margin:0; }
-      .eyebrow { text-transform:uppercase; letter-spacing:.12em; font-size:.75rem; font-weight:700; color:#9bdad7; }
-      .section-card { background:white; border:1px solid #e4eaf4; border-radius:16px; padding:1rem 1.1rem; box-shadow:0 4px 14px rgba(29,53,87,.04); }
-      .muted { color:var(--muted); }
-      .result-pill { display:inline-block; padding:.35rem .75rem; background:#eaf3ff; color:#154fae; border-radius:99px; font-weight:700; }
-      div[data-testid="stMetric"] { background:#fff; border:1px solid #e4eaf4; border-radius:14px; padding:.65rem .9rem; }
-      .small-note { color:var(--muted); font-size:.86rem; }
-      [data-testid="stSidebar"] { background:#f4f7fd; border-right:1px solid #e4eaf4; }
-      .stButton > button[kind="primary"] { background:var(--blue); border:0; border-radius:10px; font-weight:700; }
-      .stButton > button { border-radius:10px; }
-      div[data-testid="stForm"] { background:#fff; padding:1rem 1.1rem; border:1px solid #e4eaf4; border-radius:16px; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# Match the original Flask/Bootstrap UI: navy sidebar, pale-grey canvas, white panels, blue section bars.
+THEME_ACCENTS = {"Blue": "#2c85b8", "Dark": "#35485c", "Green": "#229b62"}
+active_theme = st.session_state.get("theme_choice", "Blue")
+accent = THEME_ACCENTS.get(active_theme, THEME_ACCENTS["Blue"])
+style_block = """
+<style>
+  :root { --ink:#273746; --muted:#718096; --accent:ACCENT_PLACEHOLDER; --navy:#1d3e5d; --canvas:#edf2f7; --line:#dfe6ed; --green:#22ae68; }
+  .stApp { background:var(--canvas); color:var(--ink); }
+  .main .block-container { max-width:100%; padding-top:1.15rem; padding-bottom:2rem; padding-left:1.4rem; padding-right:1.4rem; }
+  html, body, [class*="css"] { font-family:Arial, Helvetica, sans-serif; }
+  h1,h2,h3,h4 { color:var(--ink); font-family:Arial, Helvetica, sans-serif; }
+  h2 { font-size:1.22rem !important; }
+  h3 { font-size:1.04rem !important; }
+  .hero { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.75rem 1rem; background:#fff; color:var(--ink); border:1px solid var(--line); border-top:4px solid var(--accent); border-radius:8px; margin-bottom:1rem; box-shadow:0 2px 8px rgba(30,55,80,.06); }
+  .hero-copy { min-width:0; }
+  .hero h1 { color:var(--ink); margin:0 0 .25rem 0; font-size:1.45rem; font-weight:700; }
+  .hero p { color:var(--muted); margin:0; font-size:.91rem; }
+  .eyebrow { color:var(--accent); font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:.15rem; }
+  .hero-user { text-align:right; color:#5a6978; font-size:.83rem; min-width:100px; }
+  .hero-user strong { color:#2d3b4b; }
+  .section-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; box-shadow:0 2px 8px rgba(30,55,80,.05); margin-bottom:.45rem; }
+  .panel-header { background:var(--accent); color:#fff; padding:.58rem .85rem; font-weight:700; border-radius:8px 8px 0 0; margin-top:.25rem; margin-bottom:0; font-size:.96rem; }
+  .panel-body { background:#fff; border:1px solid var(--line); border-top:0; border-radius:0 0 8px 8px; padding:.8rem .9rem; }
+  .muted { color:var(--muted); }
+  .result-pill { display:inline-block; padding:.4rem .9rem; background:#e6f7ed; color:#149653; border:1px solid #a6e7c1; border-radius:999px; font-weight:700; }
+  .small-note { color:var(--muted); font-size:.84rem; }
+  [data-testid="stSidebar"] { background:var(--navy) !important; border-right:1px solid #17334c; }
+  [data-testid="stSidebar"] > div:first-child { background:var(--navy) !important; }
+  [data-testid="stSidebar"] [data-testid="stMarkdownContainer"], [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span { color:#e5edf5; }
+  .sidebar-brand { text-align:center; color:#fff; padding:.6rem .2rem .8rem; font-weight:700; font-size:1rem; line-height:1.35; }
+  .sidebar-brand .brain { font-size:1.9rem; line-height:1.25; }
+  [data-testid="stSidebar"] hr { border-color:rgba(255,255,255,.18); }
+  [data-testid="stSidebar"] .stButton > button { background:transparent; color:#dce7f1; border:0; border-radius:7px; text-align:left; justify-content:flex-start; padding:.55rem .7rem; font-size:.9rem; }
+  [data-testid="stSidebar"] .stButton > button:hover { background:#294f73; color:#fff; border:0; }
+  [data-testid="stSidebar"] .stButton > button[kind="primary"] { background:#2c9dd8; color:#fff; border:0; box-shadow:none; }
+  [data-testid="stSidebar"] .stRadio > div { gap:.45rem; }
+  [data-testid="stSidebar"] [data-testid="stCaptionContainer"] { color:#b9cad9 !important; }
+  .stButton > button, .stDownloadButton > button, [data-testid="stFormSubmitButton"] > button { border-radius:6px; font-weight:600; border-color:#cdd6df; }
+  .stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primary"] { background:var(--accent); border-color:var(--accent); color:#fff; }
+  div.st-key-pdf_action [data-testid="stDownloadButton"] > button { background:#c52e45 !important; border-color:#c52e45 !important; color:#fff !important; }
+  div.st-key-new_analysis_action .stButton > button { background:#2d9bd7 !important; border-color:#2d9bd7 !important; color:#fff !important; }
+  div.st-key-records_action .stButton > button { background:#f7f9fb !important; border-color:#b9c4cf !important; color:#415263 !important; }
+  div[data-testid="stMetric"] { background:#fff; border:1px solid var(--line); border-top:3px solid var(--accent); border-radius:7px; padding:.65rem .8rem; box-shadow:0 2px 8px rgba(30,55,80,.04); }
+  div[data-testid="stForm"] { background:#fff; padding:1rem; border:1px solid var(--line); border-radius:8px; }
+  [data-testid="stFileUploader"] section { background:#fff; border-color:#cdd7e1; }
+  .stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.65rem; margin:.25rem 0 1.1rem; }
+  .stat-card { border-radius:8px; padding:.85rem 1rem; color:#fff; min-height:82px; box-shadow:0 2px 8px rgba(30,55,80,.10); }
+  .stat-number { font-size:1.7rem; line-height:1.2; font-weight:800; }
+  .stat-label { font-size:.83rem; opacity:.96; margin-top:.28rem; }
+  .stat-blue { background:#318fc0; } .stat-green { background:#28b96b; } .stat-orange { background:#e98b18; } .stat-red { background:#c93a37; }
+  @media (max-width: 850px) { .stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .hero { align-items:flex-start; } }
+</style>
+""".replace("ACCENT_PLACEHOLDER", accent)
+st.markdown(style_block, unsafe_allow_html=True)
 
 
 @contextmanager
@@ -293,7 +323,7 @@ def generate_pdf(scan: sqlite3.Row) -> bytes:
     pdf.set_text_color(30, 40, 55)
     pdf.set_xy(15, 43)
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(180, 8, "User and Scan Details")
+    pdf.cell(180, 8, "User and Scan Details", ln=1)
     pdf.set_font("Helvetica", "", 11)
     for label, value in [
         ("Name", scan["user_name"]),
@@ -303,9 +333,9 @@ def generate_pdf(scan: sqlite3.Row) -> bytes:
         ("Uploaded image", scan["image_name"]),
     ]:
         pdf.set_x(15)
-        safe_value = str(value or "").encode("latin-1", "replace").decode("latin-1")
+        safe_value = str(value or "").encode("cp1252", "replace").decode("cp1252")
         pdf.cell(45, 7, f"{label}:")
-        pdf.multi_cell(145, 7, safe_value)
+        pdf.multi_cell(135, 7, safe_value)
 
     pdf.ln(4)
     pdf.set_draw_color(35, 101, 209)
@@ -313,11 +343,11 @@ def generate_pdf(scan: sqlite3.Row) -> bytes:
     pdf.ln(5)
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_x(15)
-    pdf.cell(180, 8, "Model Output")
+    pdf.cell(180, 8, "Model Output", ln=1)
     pdf.set_font("Helvetica", "B", 15)
     pdf.set_x(15)
     pdf.set_text_color(35, 101, 209)
-    pdf.cell(180, 10, str(scan["prediction"]))
+    pdf.cell(180, 10, str(scan["prediction"]), ln=1)
     pdf.set_text_color(30, 40, 55)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_x(15)
@@ -337,7 +367,7 @@ def generate_pdf(scan: sqlite3.Row) -> bytes:
         pdf.set_font("Helvetica", "B", 12)
         pdf.cell(180, 8, "Notes", ln=1)
         pdf.set_font("Helvetica", "", 10)
-        pdf.multi_cell(180, 6, notes.encode("latin-1", "replace").decode("latin-1"))
+        pdf.multi_cell(180, 6, notes.encode("cp1252", "replace").decode("cp1252"))
 
     pdf.ln(6)
     pdf.set_fill_color(242, 246, 253)
@@ -348,14 +378,27 @@ def generate_pdf(scan: sqlite3.Row) -> bytes:
     )
     pdf.multi_cell(180, 5, disclaimer, border=0, fill=True)
     out = pdf.output()
-    return bytes(out) if not isinstance(out, str) else out.encode("latin-1")
+    return bytes(out) if not isinstance(out, str) else out.encode("cp1252", "replace")
 
 
 def show_hero(title: str, subtitle: str) -> None:
+    safe_title = html.escape(str(title))
+    safe_subtitle = html.escape(str(subtitle))
+    username = html.escape(str(st.session_state.get("display_name", "")))
+    role = html.escape(str(st.session_state.get("display_role", "")))
+    user_block = (
+        f'<div class="hero-user">👤 <strong>{username}</strong><br><span>{role}</span></div>'
+        if username else ""
+    )
     st.markdown(
-        f'<div class="hero"><div class="eyebrow">AI · MRI · Research Prototype</div><h1>{title}</h1><p>{subtitle}</p></div>',
+        f'<div class="hero"><div class="hero-copy"><div class="eyebrow">Alzheimer’s Detection</div>'
+        f'<h1>{safe_title}</h1><p>{safe_subtitle}</p></div>{user_block}</div>',
         unsafe_allow_html=True,
     )
+
+
+def panel_header(title: str) -> None:
+    st.markdown(f'<div class="panel-header">{html.escape(str(title))}</div>', unsafe_allow_html=True)
 
 
 def show_auth() -> None:
@@ -407,25 +450,36 @@ def show_dashboard(user: sqlite3.Row) -> None:
     records = list_user_scans(int(user["id"]))
     total = len(records)
     counts = {c: sum(1 for r in records if r["prediction"] == c) for c in CLASS_NAMES}
-    a, b, c = st.columns(3)
-    a.metric("Your scans", total)
-    b.metric("Most recent result", records[0]["prediction"] if records else "No scans yet")
-    c.metric("Account role", str(user["role"]).title())
-    st.subheader("Quick actions")
+    mild_family = counts["Mild Impairment"] + counts["Very Mild Impairment"]
+    st.markdown(
+        '<div class="stat-grid">'
+        f'<div class="stat-card stat-blue"><div class="stat-number">{total}</div><div class="stat-label">Total Scans</div></div>'
+        f'<div class="stat-card stat-green"><div class="stat-number">{counts["No Impairment"]}</div><div class="stat-label">No Impairment</div></div>'
+        f'<div class="stat-card stat-orange"><div class="stat-number">{mild_family}</div><div class="stat-label">Mild / Very Mild</div></div>'
+        f'<div class="stat-card stat-red"><div class="stat-number">{counts["Moderate Impairment"]}</div><div class="stat-label">Moderate</div></div>'
+        '</div>', unsafe_allow_html=True,
+    )
+    st.subheader("Quick Actions")
     a, b, c = st.columns(3)
     with a:
-        st.markdown('<div class="section-card"><h3>Upload & classify</h3><p>Choose an MRI image and generate a model output.</p></div>', unsafe_allow_html=True)
-        if st.button("Open MRI upload", key="dashboard_upload", use_container_width=True):
-            st.session_state["active_page"] = "Upload & Predict"
+        st.markdown('<div class="section-card"><h3>🧠 Analyse MRI</h3><p>Upload a brain MRI image and generate a model output.</p></div>', unsafe_allow_html=True)
+        if st.button("Analyse MRI", key="dashboard_upload", type="primary", use_container_width=True):
+            st.session_state["active_page"] = "Analyse MRI"
             st.rerun()
     with b:
-        st.markdown('<div class="section-card"><h3>Scan history</h3><p>Review your saved scan records and download PDFs.</p></div>', unsafe_allow_html=True)
-        if st.button("Open history", key="dashboard_history", use_container_width=True):
-            st.session_state["active_page"] = "Scan History"
+        st.markdown('<div class="section-card"><h3>🕘 My Records</h3><p>Review saved scans and download PDF reports.</p></div>', unsafe_allow_html=True)
+        if st.button("View My Records", key="dashboard_history", use_container_width=True):
+            st.session_state["active_page"] = "My Records"
             st.rerun()
     with c:
-        st.markdown('<div class="section-card"><h3>Project details</h3><p>CNN and ResNet50 · Flask-origin project migrated to Streamlit.</p></div>', unsafe_allow_html=True)
-        st.caption("Uppalapalli Yaswanth Reddy · 23SE02ML212 · MLAI 7C")
+        st.markdown('<div class="section-card"><h3>👨‍⚕️ Doctor View</h3><p>Authorized users can review recent scan records.</p></div>', unsafe_allow_html=True)
+        if user["role"] in ("doctor", "admin"):
+            if st.button("Open Doctor View", key="dashboard_doctor", use_container_width=True):
+                st.session_state["active_page"] = "Doctor View"
+                st.rerun()
+        else:
+            st.caption("Doctor access is role-restricted.")
+    st.caption("Uppalapalli Yaswanth Reddy · 23SE02ML212 · MLAI 7C")
     if records:
         st.subheader("Recent scans")
         for scan in records[:5]:
@@ -436,7 +490,7 @@ def show_dashboard(user: sqlite3.Row) -> None:
                 y.metric("Confidence", f"{float(scan['confidence']):.1f}%")
                 if z.button("View report", key=f"dashboard_view_{scan['id']}"):
                     st.session_state["view_scan_id"] = int(scan["id"])
-                    st.session_state["active_page"] = "Scan History"
+                    st.session_state["active_page"] = "My Records"
                     st.rerun()
 
 
@@ -482,7 +536,7 @@ def show_upload(user: sqlite3.Row) -> None:
                         CLASS_NAMES[idx], probs[CLASS_NAMES[idx]], probs, notes,
                     )
                     st.session_state["view_scan_id"] = scan_id
-                    st.session_state["active_page"] = "Latest Result"
+                    st.session_state["active_page"] = "My Records"
                     st.rerun()
                 except Exception as exc:
                     st.error("Prediction could not be completed. Check that the model files are complete and the hosting service has enough memory.")
@@ -492,38 +546,59 @@ def show_upload(user: sqlite3.Row) -> None:
 
 
 def show_scan_result(scan: sqlite3.Row) -> None:
-    show_hero("Prediction report", "Model output and category-level scores for the selected image.")
-    a, b = st.columns([1, 1])
-    with a:
-        if scan["image_bytes"]:
-            try:
-                st.image(Image.open(sqlite3_blob_file(scan["image_bytes"])), caption=scan["image_name"], use_container_width=True)
-            except Exception:
-                st.caption(f"Uploaded file: {scan['image_name']}")
-        st.metric("Predicted category", scan["prediction"])
-        st.metric("Model confidence score", f"{float(scan['confidence']):.2f}%")
+    # Layout follows the original Flask page: image on the left, diagnosis and
+    # stage probabilities on the right, and the three original actions below.
+    show_hero("Analysis Result", "MRI classification result and confidence scores.")
+    left, right = st.columns([0.94, 1.46], gap="medium")
     probs = json.loads(scan["probabilities_json"] or "{}")
-    with b:
-        st.subheader("Scores across the four categories")
-        for category in CLASS_NAMES:
-            score = float(probs.get(category, 0.0))
-            st.write(f"**{category}** — {score:.2f}%")
-            st.progress(max(0.0, min(1.0, score / 100.0)))
-        st.caption(f"Record #{int(scan['id']):04d} · {scan['created_at']}")
+    with left:
+        panel_header("🖼  Uploaded MRI")
+        with st.container(border=True):
+            if scan["image_bytes"]:
+                try:
+                    st.image(Image.open(sqlite3_blob_file(scan["image_bytes"])), caption=scan["image_name"], use_container_width=True)
+                except Exception:
+                    st.caption(f"Uploaded file: {scan['image_name']}")
+            else:
+                st.info("No image preview is saved for this record.")
+            st.caption(f"Analysed on {scan['created_at']}")
+    with right:
+        panel_header("♟  Diagnosis")
+        with st.container(border=True):
+            st.markdown(f'<div style="text-align:center;padding:12px"><span class="result-pill">● {html.escape(str(scan["prediction"]))}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="text-align:center;color:#5c6b7a;padding:2px 0 8px">Confidence: <strong style="color:#22ae68">{float(scan["confidence"]):.2f}%</strong></div>', unsafe_allow_html=True)
+            st.progress(max(0.0, min(1.0, float(scan["confidence"]) / 100.0)))
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        panel_header("▤  Stage Probabilities")
+        with st.container(border=True):
+            for category, color in zip(CLASS_NAMES, ["#df7a18", "#c84343", "#24aa68", "#d39b09"]):
+                score = float(probs.get(category, 0.0))
+                col_label, col_score = st.columns([4, 1])
+                col_label.markdown(f"**{category}**")
+                col_score.markdown(f"<div style='text-align:right;color:{color};font-weight:700'>{score:.1f}%</div>", unsafe_allow_html=True)
+                st.progress(max(0.0, min(1.0, score / 100.0)))
     st.info("A model confidence score is not the same as overall model accuracy. This academic prototype has not been clinically validated and must not be used for diagnosis or treatment decisions.")
     pdf = generate_pdf(scan)
-    st.download_button(
-        "Download PDF report",
-        data=pdf,
-        file_name=f"Alzheimer_MRI_Report_{int(scan['id'])}.pdf",
-        mime="application/pdf",
-        type="primary",
-        use_container_width=True,
-    )
-    if st.button("Back to scan history"):
-        st.session_state["active_page"] = "Scan History"
-        st.rerun()
-
+    pdf_col, new_col, records_col = st.columns([1.25, 1, 1])
+    with pdf_col:
+        with st.container(key="pdf_action"):
+            st.download_button(
+                "📄 Download PDF Report",
+                data=pdf,
+                file_name=f"Alzheimer_MRI_Report_{int(scan['id'])}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+    with new_col:
+        with st.container(key="new_analysis_action"):
+            if st.button("＋ New Analysis", key=f"new_analysis_{scan['id']}", use_container_width=True):
+                st.session_state["active_page"] = "Analyse MRI"
+                st.rerun()
+    with records_col:
+        with st.container(key="records_action"):
+            if st.button("⟲ All Records", key=f"all_records_{scan['id']}", use_container_width=True):
+                st.session_state["active_page"] = "My Records"
+                st.rerun()
 
 def sqlite_blob_to_image_bytes(blob: bytes) -> bytes:
     return bytes(blob)
@@ -541,7 +616,7 @@ def show_history(user: sqlite3.Row) -> None:
     if not records:
         st.info("You have no saved scans yet. Open Upload & Predict to classify an MRI image.")
         if st.button("Upload an MRI now", type="primary"):
-            st.session_state["active_page"] = "Upload & Predict"
+            st.session_state["active_page"] = "Analyse MRI"
             st.rerun()
         return
     selected_id = st.session_state.get("view_scan_id")
@@ -567,7 +642,7 @@ def show_history(user: sqlite3.Row) -> None:
 
 
 def show_doctor_dashboard() -> None:
-    show_hero("Doctor dashboard", "View patient accounts, scan counts, and recent model outputs.")
+    show_hero("Doctor View", "View patient accounts, scan counts, and recent model outputs.")
     with db_connect() as conn:
         patient_count = conn.execute("SELECT COUNT(*) FROM users WHERE role='patient'").fetchone()[0]
         total_scans = conn.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
@@ -659,61 +734,60 @@ if current_user is None:
     show_auth()
     st.stop()
 
-# Sidebar navigation and account actions.
+# Sidebar navigation follows the original Flask application's menu structure.
+st.session_state["display_name"] = current_user["name"]
+st.session_state["display_role"] = str(current_user["role"]).title()
 with st.sidebar:
-    st.markdown("## 🧠 Alzheimer AI")
-    st.caption("MRI classification research demo")
+    st.markdown("<div class='sidebar-brand'><div class='brain'>🧠</div>Alzheimer's<br>Detection</div>", unsafe_allow_html=True)
     st.divider()
-    st.write(f"**{current_user['name']}**")
-    st.caption(f"{current_user['email']} · {str(current_user['role']).title()}")
-    pages = ["Dashboard", "Upload & Predict", "Latest Result", "Scan History", "About Project"]
+    st.caption(f"{current_user['name']} · {str(current_user['role']).title()}")
+    pages = ["Dashboard", "Analyse MRI", "My Records"]
     if current_user["role"] in ("doctor", "admin"):
-        pages.append("Doctor Dashboard")
+        pages.append("Doctor View")
     if current_user["role"] == "admin":
         pages.append("Admin Panel")
     if st.session_state.get("active_page") not in pages:
         st.session_state["active_page"] = "Dashboard"
-    st.caption("NAVIGATION")
-    active_page = st.session_state.get("active_page", "Dashboard")
+    nav_labels = {
+        "Dashboard": "⌂  Dashboard",
+        "Analyse MRI": "♧  Analyse MRI",
+        "My Records": "◴  My Records",
+        "Doctor View": "♟  Doctor View",
+        "Admin Panel": "⚙  Admin Panel",
+    }
     for page in pages:
         if st.button(
-            page,
+            nav_labels.get(page, page),
             key=f"nav_button_{page.replace(' ', '_').replace('&', 'and')}",
-            type="primary" if active_page == page else "secondary",
+            type="primary" if st.session_state["active_page"] == page else "secondary",
             use_container_width=True,
         ):
             st.session_state["active_page"] = page
             st.rerun()
-    st.divider()
-    if st.button("Sign out", key="sign_out_button", use_container_width=True):
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+    st.caption("Theme")
+    st.radio("Theme", list(THEME_ACCENTS.keys()), horizontal=True, key="theme_choice", label_visibility="collapsed")
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    if st.button("↪ Logout", key="sign_out_button", use_container_width=True):
         st.session_state["user_id"] = None
         st.session_state.pop("view_scan_id", None)
+        st.session_state.pop("display_name", None)
+        st.session_state.pop("display_role", None)
         st.session_state["active_page"] = "Dashboard"
         st.rerun()
     st.caption("Academic demo · Not for clinical use")
 
+active_page = st.session_state.get("active_page", "Dashboard")
 if active_page == "Dashboard":
     show_dashboard(current_user)
-elif active_page == "Upload & Predict":
+elif active_page == "Analyse MRI":
     show_upload(current_user)
-elif active_page == "Latest Result":
-    scan_id = st.session_state.get("view_scan_id")
-    scan = get_scan(scan_id, allowed_user_id=int(current_user["id"])) if scan_id else None
-    if scan:
-        show_scan_result(scan)
-    else:
-        st.info("No recent result selected. Upload an MRI image to begin.")
-        if st.button("Go to MRI upload", type="primary"):
-            st.session_state["active_page"] = "Upload & Predict"
-            st.rerun()
-elif active_page == "Scan History":
+elif active_page == "My Records":
     show_history(current_user)
-elif active_page == "Doctor Dashboard":
+elif active_page == "Doctor View":
     show_doctor_dashboard()
 elif active_page == "Admin Panel":
     show_admin_panel(current_user)
-elif active_page == "About Project":
-    show_about()
 
 st.divider()
 st.caption("Alzheimer’s MRI Classification · CNN & ResNet50 · Educational research prototype · Not a clinical diagnostic tool")
