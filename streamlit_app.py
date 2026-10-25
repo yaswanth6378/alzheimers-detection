@@ -99,6 +99,63 @@ style_block = """
   .stat-label { font-size:.83rem; opacity:.96; margin-top:.28rem; }
   .stat-blue { background:#318fc0; } .stat-green { background:#28b96b; } .stat-orange { background:#e98b18; } .stat-red { background:#c93a37; }
   @media (max-width: 850px) { .stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .hero { align-items:flex-start; } }
+
+  /* Explicit light form controls: prevent dark-theme inputs from looking black. */
+  [data-testid="stAppViewContainer"] main [data-testid="stTextInput"] input,
+  [data-testid="stAppViewContainer"] main [data-testid="stTextArea"] textarea,
+  [data-testid="stAppViewContainer"] main [data-testid="stNumberInput"] input,
+  [data-testid="stAppViewContainer"] main [data-testid="stDateInput"] input,
+  [data-testid="stAppViewContainer"] main [data-testid="stTimeInput"] input,
+  [data-testid="stAppViewContainer"] main [data-baseweb="input"] input,
+  [data-testid="stAppViewContainer"] main [data-baseweb="textarea"] textarea,
+  [data-testid="stAppViewContainer"] main input[type="text"],
+  [data-testid="stAppViewContainer"] main input[type="email"],
+  [data-testid="stAppViewContainer"] main input[type="password"] {
+      background-color:#ffffff !important;
+      color:#243447 !important;
+      -webkit-text-fill-color:#243447 !important;
+      caret-color:#176fa6 !important;
+      border-color:#bac8d6 !important;
+      opacity:1 !important;
+  }
+  [data-testid="stAppViewContainer"] main [data-baseweb="input"] > div,
+  [data-testid="stAppViewContainer"] main [data-baseweb="textarea"],
+  [data-testid="stAppViewContainer"] main [data-baseweb="select"] > div {
+      background-color:#ffffff !important;
+      border-color:#bac8d6 !important;
+      color:#243447 !important;
+  }
+  [data-testid="stAppViewContainer"] main input::placeholder,
+  [data-testid="stAppViewContainer"] main textarea::placeholder {
+      color:#7d8b99 !important;
+      -webkit-text-fill-color:#7d8b99 !important;
+      opacity:1 !important;
+  }
+  [data-testid="stAppViewContainer"] main [data-testid="stWidgetLabel"] p,
+  [data-testid="stAppViewContainer"] main label,
+  [data-testid="stAppViewContainer"] main [data-testid="stMarkdownContainer"] p {
+      color:#273746;
+  }
+  [data-testid="stAppViewContainer"] main [data-testid="stTextInput"] input:focus,
+  [data-testid="stAppViewContainer"] main [data-testid="stTextArea"] textarea:focus,
+  [data-testid="stAppViewContainer"] main [data-baseweb="input"] input:focus {
+      border-color:var(--accent) !important;
+      box-shadow:0 0 0 1px var(--accent) !important;
+  }
+  [data-testid="stAppViewContainer"] main input:-webkit-autofill,
+  [data-testid="stAppViewContainer"] main input:-webkit-autofill:hover,
+  [data-testid="stAppViewContainer"] main input:-webkit-autofill:focus {
+      -webkit-box-shadow:0 0 0 1000px #ffffff inset !important;
+      -webkit-text-fill-color:#243447 !important;
+  }
+  [data-testid="stAppViewContainer"] main [data-baseweb="popover"] ul,
+  [data-testid="stAppViewContainer"] main [role="listbox"] {
+      background:#ffffff !important;
+      color:#243447 !important;
+  }
+  [data-testid="stAppViewContainer"] main [role="option"] {
+      color:#243447 !important;
+  }
 </style>
 """.replace("ACCENT_PLACEHOLDER", accent)
 st.markdown(style_block, unsafe_allow_html=True)
@@ -304,12 +361,23 @@ def normalize_probabilities(output: np.ndarray) -> np.ndarray:
 
 
 def generate_pdf(scan: sqlite3.Row) -> bytes:
+    """Generate a clean, readable PDF with explicit line positioning."""
     from fpdf import FPDF
+    import unicodedata
+
+    def pdf_safe(value: Any) -> str:
+        # Core Helvetica fonts are not full Unicode fonts. Normalize and replace
+        # unsupported glyphs so special characters never corrupt PDF rendering.
+        text = unicodedata.normalize("NFKD", str(value or ""))
+        return text.encode("cp1252", "replace").decode("cp1252")
 
     probs = json.loads(scan["probabilities_json"] or "{}")
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=16)
+    pdf = FPDF(format="A4")
+    pdf.set_margins(15, 15, 15)
+    pdf.set_auto_page_break(auto=True, margin=17)
     pdf.add_page()
+
+    # Header matching the original project's blue/navy theme.
     pdf.set_fill_color(30, 66, 125)
     pdf.rect(0, 0, 210, 34, "F")
     pdf.set_text_color(255, 255, 255)
@@ -320,63 +388,74 @@ def generate_pdf(scan: sqlite3.Row) -> bytes:
     pdf.set_xy(12, 20)
     pdf.cell(186, 6, "Academic research prototype - AI-generated image classification", align="C")
 
+    # Each detail uses one wrapped paragraph rather than overlapping adjacent cells.
     pdf.set_text_color(30, 40, 55)
     pdf.set_xy(15, 43)
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(180, 8, "User and Scan Details", ln=1)
-    pdf.set_font("Helvetica", "", 11)
-    for label, value in [
+    pdf.cell(180, 8, "User and Scan Details", new_x="LMARGIN", new_y="NEXT")
+    detail_rows = [
         ("Name", scan["user_name"]),
         ("Email", scan["user_email"]),
-        ("Record ID", f"#{scan['id']:04d}"),
+        ("Record ID", f"#{int(scan['id']):04d}"),
         ("Date", scan["created_at"]),
         ("Uploaded image", scan["image_name"]),
-    ]:
+    ]
+    for label, value in detail_rows:
         pdf.set_x(15)
-        safe_value = str(value or "").encode("cp1252", "replace").decode("cp1252")
-        pdf.cell(45, 7, f"{label}:")
-        pdf.multi_cell(135, 7, safe_value)
+        pdf.set_font("Helvetica", "B", 10.5)
+        pdf.cell(38, 7, pdf_safe(f"{label}:"), new_x="RIGHT", new_y="TOP")
+        pdf.set_font("Helvetica", "", 10.5)
+        pdf.multi_cell(142, 7, pdf_safe(value), new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(4)
     pdf.set_draw_color(35, 101, 209)
+    pdf.set_line_width(0.4)
     pdf.line(15, pdf.get_y(), 195, pdf.get_y())
     pdf.ln(5)
+
+    pdf.set_x(15)
     pdf.set_font("Helvetica", "B", 13)
+    pdf.cell(180, 8, "Model Output", new_x="LMARGIN", new_y="NEXT")
     pdf.set_x(15)
-    pdf.cell(180, 8, "Model Output", ln=1)
     pdf.set_font("Helvetica", "B", 15)
-    pdf.set_x(15)
     pdf.set_text_color(35, 101, 209)
-    pdf.cell(180, 10, str(scan["prediction"]), ln=1)
+    pdf.multi_cell(180, 9, pdf_safe(scan["prediction"]), new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(30, 40, 55)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_x(15)
-    pdf.cell(180, 8, f"Model confidence score: {float(scan['confidence']):.2f}%", ln=1)
+    pdf.cell(180, 8, f"Model confidence score: {float(scan['confidence']):.2f}%", new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(3)
+    pdf.set_x(15)
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(180, 8, "Scores across the four categories", ln=1)
-    pdf.set_font("Helvetica", "", 11)
+    pdf.cell(180, 8, "Scores across the four categories", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10.5)
     for category in CLASS_NAMES:
-        pdf.cell(125, 7, category)
-        pdf.cell(50, 7, f"{float(probs.get(category, 0.0)):.2f}%", align="R", ln=1)
+        pdf.set_x(15)
+        pdf.cell(125, 7, pdf_safe(category), new_x="RIGHT", new_y="TOP")
+        pdf.cell(55, 7, f"{float(probs.get(category, 0.0)):.2f}%", align="R", new_x="LMARGIN", new_y="NEXT")
 
-    notes = str(scan["notes"] or "").strip()
+    notes = pdf_safe(str(scan["notes"] or "").strip())
     if notes:
         pdf.ln(3)
+        pdf.set_x(15)
         pdf.set_font("Helvetica", "B", 12)
-        pdf.cell(180, 8, "Notes", ln=1)
+        pdf.cell(180, 8, "Notes", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 10)
-        pdf.multi_cell(180, 6, notes.encode("cp1252", "replace").decode("cp1252"))
+        pdf.set_x(15)
+        pdf.multi_cell(180, 6, notes, new_x="LMARGIN", new_y="NEXT")
 
-    pdf.ln(6)
+    pdf.ln(5)
     pdf.set_fill_color(242, 246, 253)
+    pdf.set_text_color(80, 90, 102)
     pdf.set_font("Helvetica", "I", 9)
     disclaimer = (
         "Important: This output is produced by an academic AI prototype. The confidence score is not the model's overall accuracy, "
         "and the output is not a diagnosis or treatment recommendation. Consult a qualified medical professional for clinical interpretation."
     )
-    pdf.multi_cell(180, 5, disclaimer, border=0, fill=True)
+    pdf.set_x(15)
+    pdf.multi_cell(180, 5, pdf_safe(disclaimer), border=0, fill=True, new_x="LMARGIN", new_y="NEXT")
+
     out = pdf.output()
     return bytes(out) if not isinstance(out, str) else out.encode("cp1252", "replace")
 
