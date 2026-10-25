@@ -1,4 +1,4 @@
-# Streamlit Community Cloud: select Python 3.12 in Advanced settings
+# Select Python 3.12 in Streamlit Community Cloud Advanced settings
 streamlit>=1.40,<2
 tensorflow==2.21.0
 numpy>=1.26,<2.2
