@@ -1,13 +1,8 @@
+# Streamlit Community Cloud: select Python 3.12 in Advanced settings
 streamlit>=1.40,<2
 tensorflow==2.21.0
-numpy<2.2
-pandas>=2.0
+numpy>=1.26,<2.2
 Pillow>=10.0
 gdown>=5.2
-
-flask
-flask-sqlalchemy
-werkzeug
-fpdf2
-opencv-python-headless
-gunicorn
+fpdf2>=2.8
+werkzeug>=3.0,<4
